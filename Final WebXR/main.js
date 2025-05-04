@@ -47,48 +47,17 @@ const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
 light.position.set(0.5, 1, 0.25);
 scene.add(light);
 
-//declare for joint mesh data
-// List of joint pairs to connect (skeleton bones)
-const boneConnections = [
-  ['wrist', 'index-finger-metacarpal'],
-  ['index-finger-metacarpal', 'index-finger-proximal'],
-  ['index-finger-proximal', 'index-finger-intermediate'],
-  ['index-finger-intermediate', 'index-finger-distal'],
-  ['index-finger-distal', 'index-finger-tip'],
+// Hand tracking setup
+const spheres = {}; // key: joint name, value: mesh sphere
+const jointGeometry = new THREE.SphereGeometry(0.01, 8, 8);
+const jointMaterial = new THREE.MeshStandardMaterial({ color: 0x00ffcc });
 
-  ['wrist', 'thumb-metacarpal'],
-  ['thumb-metacarpal', 'thumb-proximal'],
-  ['thumb-proximal', 'thumb-distal'],
-  ['thumb-distal', 'thumb-tip'],
-
-  ['wrist', 'middle-finger-metacarpal'],
-  ['middle-finger-metacarpal', 'middle-finger-proximal'],
-  ['middle-finger-proximal', 'middle-finger-intermediate'],
-  ['middle-finger-intermediate', 'middle-finger-distal'],
-  ['middle-finger-distal', 'middle-finger-tip'],
-
-  ['wrist', 'ring-finger-metacarpal'],
-  ['ring-finger-metacarpal', 'ring-finger-proximal'],
-  ['ring-finger-proximal', 'ring-finger-intermediate'],
-  ['ring-finger-intermediate', 'ring-finger-distal'],
-  ['ring-finger-distal', 'ring-finger-tip'],
-
-  ['wrist', 'pinky-finger-metacarpal'],
-  ['pinky-finger-metacarpal', 'pinky-finger-proximal'],
-  ['pinky-finger-proximal', 'pinky-finger-intermediate'],
-  ['pinky-finger-intermediate', 'pinky-finger-distal'],
-  ['pinky-finger-distal', 'pinky-finger-tip'],
-];
-
-const spheres = {};
-const jointGeometry = new THREE.SphereGeometry(0.01,8,8);
-const jointMaterial = new THREE.MeshStandardMaterial({color:'#42cfa7'});
-//create hands and track joints
-for(let i=0; i<2; i++){
+// Create hands and track joints
+for (let i = 0; i < 2; i++) {
   const hand = renderer.xr.getHand(i);
   hand.joints = {};
   scene.add(hand);
-  
+
   hand.addEventListener('connected', (event) => {
     const inputSource = event.data;
     if (inputSource.hand) {

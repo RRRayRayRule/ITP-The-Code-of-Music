@@ -1,17 +1,15 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
-import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory.js';
 import { FirstBatchedRain, SecondBatchedRain,  ThirdBatchedRain  } from './class.js';
-import { XRHandModelFactory } from 'three/examples/jsm/Addons.js';
-
+import { XRHandModelFactory } from 'three/examples/jsm/webxr/XRHandModelFactory.js';
 
 //basic setting:
 const scene = new THREE.Scene();
 const world = new THREE.Group();
 scene.add(world);
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.001, 1000);
-const renderer = new THREE.WebGLRenderer();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.0001, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 const controls = new OrbitControls(camera, renderer.domElement);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.xr.enabled = true; //enable WebXR support
@@ -36,20 +34,82 @@ const edges = new THREE.EdgesGeometry(boxGeometry);
 const lineMaterial = new THREE.LineBasicMaterial({ color: "#bababa", transparent: true, opacity: 0.5 });
 const wireframe = new THREE.LineSegments(edges, lineMaterial);
 scene.background = new THREE.Color("#ededed");
-wireframe.position.copy(camera.position); // 可用這行固定在當前位置
+//scene.background = new THREE.Color("black");
+wireframe.position.copy(camera.position); // 可用這行固定在當前位置ㄐ
 world.add(wireframe);
 //setting the perspective:
 camera.position.set(0, 1.6, 0);
 camera.lookAt(0, 0, 0);
 world.position.set(0, 1, 0);
-//activate hand tracking:
-const hand1= renderer.xr.getHand(0);
-const hand2= renderer.xr.getHand(1);
-world.add(hand1);
-world.add(hand2);
-const handModelFactory = new XRHandModelFactory();
-hand1.add(handModelFactory.createHandModel(hand1, "lines"));
-hand2.add(handModelFactory.createHandModel(hand2, "lines"));
+
+// Add light
+const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+light.position.set(0.5, 1, 0.25);
+scene.add(light);
+
+//declare for joint mesh data
+// List of joint pairs to connect (skeleton bones)
+const boneConnections = [
+  ['wrist', 'index-finger-metacarpal'],
+  ['index-finger-metacarpal', 'index-finger-proximal'],
+  ['index-finger-proximal', 'index-finger-intermediate'],
+  ['index-finger-intermediate', 'index-finger-distal'],
+  ['index-finger-distal', 'index-finger-tip'],
+
+  ['wrist', 'thumb-metacarpal'],
+  ['thumb-metacarpal', 'thumb-proximal'],
+  ['thumb-proximal', 'thumb-distal'],
+  ['thumb-distal', 'thumb-tip'],
+
+  ['wrist', 'middle-finger-metacarpal'],
+  ['middle-finger-metacarpal', 'middle-finger-proximal'],
+  ['middle-finger-proximal', 'middle-finger-intermediate'],
+  ['middle-finger-intermediate', 'middle-finger-distal'],
+  ['middle-finger-distal', 'middle-finger-tip'],
+
+  ['wrist', 'ring-finger-metacarpal'],
+  ['ring-finger-metacarpal', 'ring-finger-proximal'],
+  ['ring-finger-proximal', 'ring-finger-intermediate'],
+  ['ring-finger-intermediate', 'ring-finger-distal'],
+  ['ring-finger-distal', 'ring-finger-tip'],
+
+  ['wrist', 'pinky-finger-metacarpal'],
+  ['pinky-finger-metacarpal', 'pinky-finger-proximal'],
+  ['pinky-finger-proximal', 'pinky-finger-intermediate'],
+  ['pinky-finger-intermediate', 'pinky-finger-distal'],
+  ['pinky-finger-distal', 'pinky-finger-tip'],
+];
+
+const spheres = {};
+const jointGeometry = new THREE.SphereGeometry(0.01,8,8);
+const jointMaterial = new THREE.MeshStandardMaterial({color:'#42cfa7'});
+//create hands and track joints
+for(let i=0; i<2; i++){
+  const hand = renderer.xr.getHand(i);
+  hand.joints = {};
+  scene.add(hand);
+  
+  hand.addEventListener('connected', (event) => {
+    const inputSource = event.data;
+    if (inputSource.hand) {
+      for (const jointName of inputSource.hand.values()) {
+        const name = jointName.jointName;
+        const jointMesh = new THREE.Mesh(jointGeometry, jointMaterial);
+        jointMesh.visible = false;
+        spheres[`${i}-${name}`] = jointMesh;
+        hand.add(jointMesh);
+        hand.joints[name] = jointMesh;
+      }
+    }
+  });
+
+  hand.addEventListener('disconnected', () => {
+    for (const name in hand.joints) {
+      const joint = hand.joints[name];
+      if (joint.parent) joint.parent.remove(joint);
+    }
+  });
+}
 
 //loading the image:
 const loader = new THREE.TextureLoader();
@@ -82,9 +142,31 @@ for (let i = 0; i < 100; i++) {
   rightdrops.push(new  ThirdBatchedRain (world));
 }
 
-
 //animation:
-function animate() {
+function animate(timestamp, frame) {
+  if (frame) {
+    const session = renderer.xr.getSession();
+    const referenceSpace = renderer.xr.getReferenceSpace();
+
+    for (const source of session.inputSources) {
+      if (!source.hand) continue;
+      const hand = renderer.xr.getHand(source.handedness === 'left' ? 0 : 1);
+
+      for (const inputJoint of source.hand.values()) {
+        const pose = frame.getJointPose(inputJoint, referenceSpace);
+        const jointName = inputJoint.jointName;
+        const mesh = hand.joints[jointName];
+        if (pose && mesh) {
+          mesh.matrix.fromArray(pose.transform.matrix);
+          mesh.matrix.decompose(mesh.position, mesh.quaternion, mesh.scale);
+          mesh.visible = true;
+        } else if (mesh) {
+          mesh.visible = false;
+        }
+      }
+    }
+  }
+
   for (let frontdrop of frontdrops) {
     frontdrop.drop();
   }
@@ -94,9 +176,11 @@ function animate() {
   for (let rightdrop of rightdrops) {
     rightdrop.drop();
   }
+
   renderer.render(scene, camera);
   controls.update();
 }
 renderer.setAnimationLoop(animate);
+
 
 

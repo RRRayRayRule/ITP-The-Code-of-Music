@@ -1,74 +1,102 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { MeshLine, MeshLineMaterial } from 'three.meshline';
+import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
+import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory.js';
+import { FirstBatchedRain, SecondBatchedRain,  ThirdBatchedRain  } from './class.js';
+import { XRHandModelFactory } from 'three/examples/jsm/Addons.js';
 
 
+//basic setting:
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.01, 1000 );
+const world = new THREE.Group();
+scene.add(world);
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.001, 1000);
 const renderer = new THREE.WebGLRenderer();
-const controls = new OrbitControls(camera,renderer.domElement);
-renderer.setSize( window.innerWidth, window.innerHeight );
-document.body.appendChild( renderer.domElement );
+const controls = new OrbitControls(camera, renderer.domElement);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.xr.enabled = true; //enable WebXR support
 
-// 建立一個邊長 3 公尺的立方體邊框
-const boxSize = 3;
-const boxGeometry = new THREE.BoxGeometry(boxSize, boxSize, boxSize);
+//ask for hand tracking from xr manager
+navigator.xr.requestSession = (function (original) {
+  return function (mode, options) {
+      options = options || {};
+      options.optionalFeatures = options.optionalFeatures || [];
+      if (!options.optionalFeatures.includes('hand-tracking')) {
+          options.optionalFeatures.push('hand-tracking');
+      }
+      return original.call(this, mode, options);
+  };
+})(navigator.xr.requestSession);
+
+document.body.appendChild(renderer.domElement);
+document.body.appendChild(VRButton.createButton(renderer));
+//Setting the frame:
+const boxGeometry = new THREE.BoxGeometry(2, 3, 2);
 const edges = new THREE.EdgesGeometry(boxGeometry);
-const lineMaterial = new THREE.LineBasicMaterial({ color: "#bababa" , transparent: true, opacity: 0.5});
+const lineMaterial = new THREE.LineBasicMaterial({ color: "#bababa", transparent: true, opacity: 0.5 });
 const wireframe = new THREE.LineSegments(edges, lineMaterial);
 scene.background = new THREE.Color("#ededed");
-// 放置在觀眾周圍（以 camera 為中心）
 wireframe.position.copy(camera.position); // 可用這行固定在當前位置
-scene.add(wireframe);
-camera.position.z = 5;
+world.add(wireframe);
+//setting the perspective:
+camera.position.set(0, 1.6, 0);
+camera.lookAt(0, 0, 0);
+world.position.set(0, 1, 0);
+//activate hand tracking:
+const hand1= renderer.xr.getHand(0);
+const hand2= renderer.xr.getHand(1);
+world.add(hand1);
+world.add(hand2);
+const handModelFactory = new XRHandModelFactory();
+hand1.add(handModelFactory.createHandModel(hand1, "lines"));
+hand2.add(handModelFactory.createHandModel(hand2, "lines"));
+
+//loading the image:
+const loader = new THREE.TextureLoader();
+const imageTexture = loader.load('/assets/eye poster copy.png');
+const imagemMaterial = new THREE.MeshBasicMaterial({
+  map: imageTexture,
+  transparent: true,
+  alphatest: 0.5,
+  side: THREE.DoubleSide
+});
+const imageGeometry = new THREE.PlaneGeometry(0.5, 0.5);
+const imageMesh = new THREE.Mesh(imageGeometry, imagemMaterial);
+world.add(imageMesh);
+imageMesh.position.set(0,0,-1.5);
 
 
-
-//the class needs to be declared before use
-class FirstRain{
-  constructor(scene){
-    this.scene = scene;
-    this.length = 0.1;
-    this.x = THREE.MathUtils.randFloat(-1.5, 1.5);
-    this.y = THREE.MathUtils.randFloat(0,1.8);
-    this.z=-1.5;
-    this.speed = THREE.MathUtils.randFloat(-0.005,-0.007);
-    const points =[
-      new THREE.Vector3(this.x,this.y,this.z),
-      new THREE.Vector3(this.x,this.y+this.length, this.z)
-    ];
-    const material = new THREE.LineBasicMaterial({color: "#d12e2e", transparent: true, opacity: 0.3});
-    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    this.line = new THREE.Line(geometry,material);
-    scene.add(this.line);
-  }
-    
-    drop(){
-      this.y += this.speed;
-      if(this.y<-1.5){
-        this.y = THREE.MathUtils.randFloat(1.3,1.5);
-    }
-    const points =[
-      new THREE.Vector3(this.x,this.y,this.z),
-      new THREE.Vector3(this.x,this.y+this.length, this.z)
-    ];
-    this.line.geometry.setFromPoints(points);
-    }
-  }
-
-const frontdrops =[];
-for(let i=0; i<5000 ; i++){
-  frontdrops.push(new FirstRain(scene));
+//declare the 3 different types of rain
+const frontdrops = [];
+for (let i = 0; i < 10; i++) {
+  frontdrops.push(new FirstBatchedRain(world));
 }
 
+const leftdrops = [];
+for (let i = 0; i < 30; i++) {
+  leftdrops.push(new SecondBatchedRain(world));
+}
+
+const rightdrops = [];
+for (let i = 0; i < 100; i++) {
+  rightdrops.push(new  ThirdBatchedRain (world));
+}
+
+
+//animation:
 function animate() {
-  for(let frontdrop of frontdrops){
+  for (let frontdrop of frontdrops) {
     frontdrop.drop();
   }
-    renderer.render( scene, camera );
-    controls.update();
+  for (let leftdrop of leftdrops) {
+    leftdrop.drop();
   }
-
-  renderer.setAnimationLoop( animate );
+  for (let rightdrop of rightdrops) {
+    rightdrop.drop();
+  }
+  renderer.render(scene, camera);
+  controls.update();
+}
+renderer.setAnimationLoop(animate);
 
 

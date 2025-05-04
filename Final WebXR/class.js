@@ -84,6 +84,7 @@ export class SecondBatchedRain {
 
         // Create instanced mesh
         this.mesh = new THREE.InstancedMesh(geometry, material, this.count);
+        this.mesh.frustumCulled = false;
         this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
         this.world.add(this.mesh);
 

@@ -13,7 +13,8 @@
   "dependencies": {
     "@webxr-input-profiles/motion-controllers": "^1.0.0",
     "three": "^0.176.0",
-    "three.meshline": "^1.4.0"
+    "three.meshline": "^1.4.0",
+    "tone": "^15.1.22"
   },
   "devDependencies": {
     "vite": "^6.3.4"

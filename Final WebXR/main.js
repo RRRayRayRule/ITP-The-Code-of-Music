@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 import { FirstBatchedRain, SecondBatchedRain,  ThirdBatchedRain  } from './class.js';
 import { XRHandModelFactory } from 'three/examples/jsm/webxr/XRHandModelFactory.js';
+import * as Tone from 'tone';
 
 //basic setting:
 const scene = new THREE.Scene();
@@ -35,8 +36,32 @@ const lineMaterial = new THREE.LineBasicMaterial({ color: "#bababa", transparent
 const wireframe = new THREE.LineSegments(edges, lineMaterial);
 scene.background = new THREE.Color("#ededed");
 //scene.background = new THREE.Color("black");
-wireframe.position.copy(camera.position); // 可用這行固定在當前位置ㄐ
+wireframe.position.copy(camera.position); 
 world.add(wireframe);
+
+//setting trigger walls:
+const wallMaterial = new THREE.MeshBasicMaterial({
+  color:'black',
+  transparent: true,
+  opacity:0,
+  side: THREE.DoubleSide,
+  depthWrite: false
+})
+const wallGeometry = new THREE.BoxGeometry(2,3,1);
+const frontWall = new THREE.Mesh(wallGeometry,wallMaterial.clone());
+frontWall.position.set(0,0,-1);
+world.add(frontWall);
+const leftWall = new THREE.Mesh(wallGeometry,wallMaterial.clone());
+leftWall.rotation.y = Math.PI / 2;
+leftWall.position.set(-1,0,0);
+world.add(leftWall);
+const rightWall = new THREE.Mesh(wallGeometry,wallMaterial.clone());
+rightWall.rotation.y = Math.PI / 2;
+rightWall.position.set(1,0,0);
+world.add(rightWall);
+const triggerWalls = [frontWall,leftWall,rightWall];
+const wallTouched = [false,false,false]; // [front, left, right]
+
 //setting the perspective:
 camera.position.set(0, 1.6, 0);
 camera.lookAt(0, 0, 0);
@@ -80,32 +105,32 @@ for (let i = 0; i < 2; i++) {
   });
 }
 
-//loading the image:
-const loader = new THREE.TextureLoader();
-const imageTexture = loader.load('/assets/eye poster copy.png');
-const imagemMaterial = new THREE.MeshBasicMaterial({
-  map: imageTexture,
-  transparent: true,
-  alphatest: 0.5,
-  side: THREE.DoubleSide
-});
-const imageGeometry = new THREE.PlaneGeometry(0.5, 0.5);
-const imageMesh = new THREE.Mesh(imageGeometry, imagemMaterial);
-world.add(imageMesh);
-imageMesh.position.set(0,0,-1.5);
+// //loading the image:
+
+// const loader = new THREE.TextureLoader();
+// const imageTexture = loader.load('/assets/eye poster copy.png');
+// const imagemMaterial = new THREE.MeshBasicMaterial({
+//   map: imageTexture,
+//   transparent: true,
+//   alphatest: 0.5,
+//   side: THREE.DoubleSide
+// });
+// const imageGeometry = new THREE.PlaneGeometry(0.5, 0.5);
+// const imageMesh = new THREE.Mesh(imageGeometry, imagemMaterial);
+// world.add(imageMesh);
+// imageMesh.position.set(0,0,-1.5);
 
 
 //declare the 3 different types of rain
+
 const frontdrops = [];
 for (let i = 0; i < 10; i++) {
   frontdrops.push(new FirstBatchedRain(world));
 }
-
 const leftdrops = [];
 for (let i = 0; i < 30; i++) {
   leftdrops.push(new SecondBatchedRain(world));
 }
-
 const rightdrops = [];
 for (let i = 0; i < 100; i++) {
   rightdrops.push(new  ThirdBatchedRain (world));
@@ -113,7 +138,9 @@ for (let i = 0; i < 100; i++) {
 
 //animation:
 function animate(timestamp, frame) {
+
   if (frame) {
+    
     const session = renderer.xr.getSession();
     const referenceSpace = renderer.xr.getReferenceSpace();
 
@@ -133,17 +160,50 @@ function animate(timestamp, frame) {
           mesh.visible = false;
         }
       }
+
+      if (!source.hand) continue;
+
+      const indexTip = source.hand.get('index-finger-tip');
+      if (!indexTip) continue;
+    
+      const jointPose = frame.getJointPose(indexTip, referenceSpace);
+      if (!jointPose) continue;
+    
+      const tipPos = new THREE.Vector3().fromArray([
+        jointPose.transform.position.x,
+        jointPose.transform.position.y,
+        jointPose.transform.position.z,
+      ]);
+
+      
+      triggerWalls.forEach((wall, i) => {
+        const box = new THREE.Box3().setFromObject(wall);
+        if (box.containsPoint(tipPos)) {
+          wall.material.opacity = 0;
+          wallTouched[i] = true;
+        } else {
+          wall.material.opacity = 0;
+          wallTouched[i] = false;
+        }
+      });
+      
     }
   }
 
   for (let frontdrop of frontdrops) {
+    if(wallTouched[0]){
     frontdrop.drop();
+    }
   }
   for (let leftdrop of leftdrops) {
+    if(wallTouched[1]){
     leftdrop.drop();
+    }
   }
   for (let rightdrop of rightdrops) {
+    if(wallTouched[2]){
     rightdrop.drop();
+    }
   }
 
   renderer.render(scene, camera);

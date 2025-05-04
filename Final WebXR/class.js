@@ -27,7 +27,6 @@ export class FirstBatchedRain {
         // Create geometry
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute('position', new THREE.BufferAttribute(this.positions, 3));
-
         const material = new THREE.PointsMaterial({
             color: new THREE.Color('#e31e1e'),
             size: 0.03,

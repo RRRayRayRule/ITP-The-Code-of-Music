@@ -29,7 +29,7 @@ export class FirstBatchedRain {
         geometry.setAttribute('position', new THREE.BufferAttribute(this.positions, 3));
 
         const material = new THREE.PointsMaterial({
-            color: new THREE.Color('#d12e2e'),
+            color: new THREE.Color('#e31e1e'),
             size: 0.03,
             transparent: true,
             opacity: 0.3,
@@ -76,7 +76,7 @@ export class SecondBatchedRain {
         const radius = THREE.MathUtils.randFloat(0.1, 0.03);// Use a fixed size for instancing
         const geometry = new THREE.CircleGeometry(radius, 32);
         const material = new THREE.MeshBasicMaterial({
-            color: 0xff0000,
+            color: '#ed1a1a',
             side: THREE.DoubleSide,
             transparent: true,
             opacity: 0.3

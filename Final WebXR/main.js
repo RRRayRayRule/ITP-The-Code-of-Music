@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
-import { FirstBatchedRain, SecondBatchedRain, ThirdBatchedRain } from './class.js';
+import { BeatSineWave, FirstBatchedRain, SecondBatchedRain, ThirdBatchedRain } from './class.js';
 import { XRHandModelFactory } from 'three/examples/jsm/webxr/XRHandModelFactory.js';
 import {MeshLine, MeshLineMaterial} from 'three.meshline';
 import * as Tone from 'tone';
@@ -170,6 +170,8 @@ for (let i = 0; i < 100; i++) {
   rightdrops.push(new ThirdBatchedRain(world));
 }
 
+const sinedrops1 = new BeatSineWave(world,0,0,-0.5);
+
 
 //animation:
 function animate(timestamp, frame) {
@@ -177,10 +179,9 @@ function animate(timestamp, frame) {
   controls.update();
   let leftTipPos = null;
   let rightTipPos = null;
-  
 
+  //if(frame), meaning that only when enter XR mode
   if (frame) {
-
     const session = renderer.xr.getSession();
     const referenceSpace = renderer.xr.getReferenceSpace();
     for (const source of session.inputSources) {
@@ -254,47 +255,48 @@ function animate(timestamp, frame) {
     //   });
     // }
 
-    for (let frontdrop of frontdrops) {
-      if (played[0]) {
-        frontdrop.drop();
-      }
+
+  }
+  for (let frontdrop of frontdrops) {
+    if (played[0]) {
+      frontdrop.drop();
     }
-    for (let leftdrop of leftdrops) {
-      if (played[1]) {
-        leftdrop.drop();
-      }
+  }
+  for (let leftdrop of leftdrops) {
+    if (played[1]) {
+      leftdrop.drop();
     }
-    for (let rightdrop of rightdrops) {
-      if (played[2]) {
-        rightdrop.drop();
-      }
+  }
+  for (let rightdrop of rightdrops) {
+    if (played[2]) {
+      rightdrop.drop();
     }
+  }
 
 
 
-    if (loaded) {
-      if (played[0] && !lastPlayed[0]) {
-        singleDrop.start("@1m");
-      } else if (!played[0] && lastPlayed[0]) {
-        singleDrop.stop();
-      }
-      if (played[1] && !lastPlayed[1]) {
-        coolWeather.start("@1m");
-      } else if (!played[1] && lastPlayed[1]) {
-        coolWeather.stop();
-      }
-      if (played[2] && !lastPlayed[2]) {
-        storm.start("@1m");
-      } else if (!played[2] && lastPlayed[2]) {
-        storm.stop();
-      }
-
+  if (loaded) {
+    if (played[0] && !lastPlayed[0]) {
+      singleDrop.start("@1m");
+    } else if (!played[0] && lastPlayed[0]) {
+      singleDrop.stop();
+    }
+    if (played[1] && !lastPlayed[1]) {
+      coolWeather.start("@1m");
+    } else if (!played[1] && lastPlayed[1]) {
+      coolWeather.stop();
+    }
+    if (played[2] && !lastPlayed[2]) {
+      storm.start("@1m");
+    } else if (!played[2] && lastPlayed[2]) {
+      storm.stop();
     }
 
-    for (let i = 0; i < 3; i++) {
-      lastWallTouched[i] = wallTouched[i];
-      lastPlayed[i] = played[i];
-    }
+  }
+
+  for (let i = 0; i < 3; i++) {
+    lastWallTouched[i] = wallTouched[i];
+    lastPlayed[i] = played[i];
   }
 }
 renderer.setAnimationLoop(animate);

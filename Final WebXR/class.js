@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {MeshLine, MeshLineMaterial} from 'three.meshline';
 
 export class FirstBatchedRain {
     constructor(world, dropCount = 200, segments = 5, length = 0.1) {
@@ -142,6 +143,7 @@ export class ThirdBatchedRain {
         });
 
         this.lines = new THREE.LineSegments(this.geometry, this.material);
+        this.lines.frustumCulled = false;
         this.world.add(this.lines);
 
         // Store per-line attributes
@@ -206,3 +208,49 @@ export class ThirdBatchedRain {
     }
 }
 
+export class BeatSineWave {
+    constructor(world, x, y, z) {
+        this.world = world;
+        this.origin = new THREE.Vector3(x, y, z);
+        this.z = z;
+        this.resolution = 100;
+        this.length = 0.3; // 0.1 meters long
+        this.spacing = this.length / this.resolution;
+
+        this.points = [];
+
+        for (let i = 0; i < this.resolution; i++) {
+            const px = i * this.spacing;
+            const py = Math.sin(px*20)*0.05;
+            const pz = 0;
+            this.points.push(new THREE.Vector3(px, py, pz));
+        }
+
+        this.meshLine = new MeshLine();
+        const flatPoints =[];
+        for(let i=0; i<this.points.length; i++){
+            flatPoints.push(this.points[i].x,this.points[i].y,this.points[i].z);
+        }
+        this.meshLine.setPoints(new Float32Array(flatPoints));
+
+        this.material = new MeshLineMaterial({
+            color: new THREE.Color('#eb3434'),
+            lineWidth: 0.03,
+        });
+
+        this.line = new THREE.Mesh(this.meshLine, this.material);
+        this.line.position.copy(this.origin);
+        this.world.add(this.line);
+    }
+
+    oscillate(time) {
+        const flatPoints =[];
+        for (let i = 0; i < this.resolution; i++) {
+            const x = i * this.spacing;
+            const y = Math.sin(x * 20 + time * 5) * 0.05; // adjust frequency and amplitude
+            this.points[i].set(x, y, this.z);
+            flatPoints.push(x,y,this.z);
+        }
+        this.meshLine.setPoints(new Float32Array(flatPoints));
+    }
+}

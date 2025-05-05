@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
-import { FirstBatchedRain, SecondBatchedRain,  ThirdBatchedRain  } from './class.js';
+import { FirstBatchedRain, SecondBatchedRain, ThirdBatchedRain } from './class.js';
 import { XRHandModelFactory } from 'three/examples/jsm/webxr/XRHandModelFactory.js';
+import {MeshLine, MeshLineMaterial} from 'three.meshline';
 import * as Tone from 'tone';
 
 //basic setting:
@@ -18,12 +19,12 @@ renderer.xr.enabled = true; //enable WebXR support
 //ask for hand tracking from xr manager
 navigator.xr.requestSession = (function (original) {
   return function (mode, options) {
-      options = options || {};
-      options.optionalFeatures = options.optionalFeatures || [];
-      if (!options.optionalFeatures.includes('hand-tracking')) {
-          options.optionalFeatures.push('hand-tracking');
-      }
-      return original.call(this, mode, options);
+    options = options || {};
+    options.optionalFeatures = options.optionalFeatures || [];
+    if (!options.optionalFeatures.includes('hand-tracking')) {
+      options.optionalFeatures.push('hand-tracking');
+    }
+    return original.call(this, mode, options);
   };
 })(navigator.xr.requestSession);
 
@@ -36,31 +37,36 @@ const lineMaterial = new THREE.LineBasicMaterial({ color: "#bababa", transparent
 const wireframe = new THREE.LineSegments(edges, lineMaterial);
 scene.background = new THREE.Color("#ededed");
 //scene.background = new THREE.Color("black");
-wireframe.position.copy(camera.position); 
+wireframe.position.copy(camera.position);
 world.add(wireframe);
 
 //setting trigger walls:
 const wallMaterial = new THREE.MeshBasicMaterial({
-  color:'black',
+  color: 'black',
   transparent: true,
-  opacity:0,
+  opacity: 0,
   side: THREE.DoubleSide,
   depthWrite: false
 })
-const wallGeometry = new THREE.BoxGeometry(2,3,1);
-const frontWall = new THREE.Mesh(wallGeometry,wallMaterial.clone());
-frontWall.position.set(0,0,-1);
+const wallGeometry = new THREE.BoxGeometry(2, 3, 1);
+const frontWall = new THREE.Mesh(wallGeometry, wallMaterial.clone());
+frontWall.position.set(0, 0, -1);
 world.add(frontWall);
-const leftWall = new THREE.Mesh(wallGeometry,wallMaterial.clone());
+const leftWall = new THREE.Mesh(wallGeometry, wallMaterial.clone());
 leftWall.rotation.y = Math.PI / 2;
-leftWall.position.set(-1,0,0);
+leftWall.position.set(-1, 0, 0);
 world.add(leftWall);
-const rightWall = new THREE.Mesh(wallGeometry,wallMaterial.clone());
+const rightWall = new THREE.Mesh(wallGeometry, wallMaterial.clone());
 rightWall.rotation.y = Math.PI / 2;
-rightWall.position.set(1,0,0);
+rightWall.position.set(1, 0, 0);
 world.add(rightWall);
-const triggerWalls = [frontWall,leftWall,rightWall];
-const wallTouched = [false,false,false]; // [front, left, right]
+let triggerWalls = [frontWall, leftWall, rightWall];
+let wallTouched = [false, false, false]; // [front, left, right]
+let lastWallTouched = [false, false, false];
+let played = [false, false, false];
+let lastPlayed = [false, false, false];
+let loaded = false;
+let lastHandDistance = 0;
 
 //setting the perspective:
 camera.position.set(0, 1.6, 0);
@@ -76,6 +82,34 @@ scene.add(light);
 const spheres = {}; // key: joint name, value: mesh sphere
 const jointGeometry = new THREE.SphereGeometry(0.01, 8, 8);
 const jointMaterial = new THREE.MeshStandardMaterial({ color: 0x00ffcc });
+
+//import sound
+const singleDrop = new Tone.Player({
+  url: '/assets/single drop.wav',
+  loop: true
+}
+).toDestination();
+const coolWeather = new Tone.Player({
+  url: '/assets/cool weather.flac',
+  loop: true
+}
+).toDestination();
+const storm = new Tone.Player({
+  url: 'assets/storm.flac',
+  loop: true
+}
+).toDestination();
+let globalBPM = 120;
+singleDrop.playbackRate = globalBPM / 123;
+coolWeather.playbackRate = globalBPM / 129;
+storm.playbackRate = globalBPM / 111;
+
+if (loaded) {
+  if (Tone.Transport.state == "stopped") {
+    Tone.Transport.bpm.value = 120;
+    Tone.Transport.start();
+  }
+}
 
 // Create hands and track joints
 for (let i = 0; i < 2; i++) {
@@ -133,21 +167,22 @@ for (let i = 0; i < 30; i++) {
 }
 const rightdrops = [];
 for (let i = 0; i < 100; i++) {
-  rightdrops.push(new  ThirdBatchedRain (world));
+  rightdrops.push(new ThirdBatchedRain(world));
 }
+
 
 //animation:
 function animate(timestamp, frame) {
+  let leftTipPos = null;
+  let rightTipPos = null;
 
   if (frame) {
-    
+
     const session = renderer.xr.getSession();
     const referenceSpace = renderer.xr.getReferenceSpace();
-
     for (const source of session.inputSources) {
       if (!source.hand) continue;
       const hand = renderer.xr.getHand(source.handedness === 'left' ? 0 : 1);
-
       for (const inputJoint of source.hand.values()) {
         const pose = frame.getJointPose(inputJoint, referenceSpace);
         const jointName = inputJoint.jointName;
@@ -160,56 +195,110 @@ function animate(timestamp, frame) {
           mesh.visible = false;
         }
       }
-
       if (!source.hand) continue;
-
       const indexTip = source.hand.get('index-finger-tip');
       if (!indexTip) continue;
-    
       const jointPose = frame.getJointPose(indexTip, referenceSpace);
       if (!jointPose) continue;
-    
       const tipPos = new THREE.Vector3().fromArray([
         jointPose.transform.position.x,
         jointPose.transform.position.y,
         jointPose.transform.position.z,
       ]);
+      if (source.handedness === 'left') {
+        leftTipPos = tipPos;
+      } else if (source.handedness === 'right') {
+        rightTipPos = tipPos;
+      }
 
-      
+
       triggerWalls.forEach((wall, i) => {
         const box = new THREE.Box3().setFromObject(wall);
         if (box.containsPoint(tipPos)) {
-          wall.material.opacity = 0;
           wallTouched[i] = true;
         } else {
-          wall.material.opacity = 0;
           wallTouched[i] = false;
         }
+        if (wallTouched[i] && !lastWallTouched[i]) {
+          played[i] = !played[i];
+        }
       });
-      
     }
-  }
 
-  for (let frontdrop of frontdrops) {
-    if(wallTouched[0]){
-    frontdrop.drop();
-    }
-  }
-  for (let leftdrop of leftdrops) {
-    if(wallTouched[1]){
-    leftdrop.drop();
-    }
-  }
-  for (let rightdrop of rightdrops) {
-    if(wallTouched[2]){
-    rightdrop.drop();
-    }
-  }
+    //this part is for volume adjustment by hands, but it doens't works for now:
+    // if (leftTipPos && rightTipPos) {
+    //   triggerWalls.forEach((wall, i) => {
+    //     const box = new THREE.Box3().setFromObject(wall);
+    //     const leftIn = box.containsPoint(leftTipPos);
+    //     const rightIn = box.containsPoint(rightTipPos);
+    //     if (leftIn && rightIn) {
+    //       const handDistance = leftTipPos.distanceTo(rightTipPos);
+    //       const handDistanceChange = Math.abs(handDistance - lastHandDistance);
+    //       const DeltaDb = handDistanceChange * 10;
+    //       if (i = 0) {
+    //         // Get current volume in dB
+    //         let currentDb = singleDrop.volume.value;
+    //         // Apply it as an increase or decrease
+    //         // You can decide direction — here's an example of increasing:
+    //         currentDb += deltaDb;
+    //         // Clamp to a reasonable range (e.g., -60 dB to 0 dB)
+    //         currentDb = Math.max(Math.min(currentDb, 0), -60);
+    //         // Set the updated volume
+    //         singleDrop.volume.value = currentDb;
+    //       }
+    //       lastHandDistance = handDistance;
+    //     }
+    //   });
+    // }
 
-  renderer.render(scene, camera);
-  controls.update();
+    for (let frontdrop of frontdrops) {
+      if (played[0]) {
+        frontdrop.drop();
+      }
+    }
+    for (let leftdrop of leftdrops) {
+      if (played[1]) {
+        leftdrop.drop();
+      }
+    }
+    for (let rightdrop of rightdrops) {
+      if (played[2]) {
+        rightdrop.drop();
+      }
+    }
+
+    renderer.render(scene, camera);
+    controls.update();
+
+    if (loaded) {
+      if (played[0] && !lastPlayed[0]) {
+        singleDrop.start("@1m");
+      } else if (!played[0] && lastPlayed[0]) {
+        singleDrop.stop();
+      }
+      if (played[1] && !lastPlayed[1]) {
+        coolWeather.start("@1m");
+      } else if (!played[1] && lastPlayed[1]) {
+        coolWeather.stop();
+      }
+      if (played[2] && !lastPlayed[2]) {
+        storm.start("@1m");
+      } else if (!played[2] && lastPlayed[2]) {
+        storm.stop();
+      }
+
+    }
+
+    for (let i = 0; i < 3; i++) {
+      lastWallTouched[i] = wallTouched[i];
+      lastPlayed[i] = played[i];
+    }
+  }
 }
 renderer.setAnimationLoop(animate);
 
+Tone.loaded().then(function () {
+  loaded = true;
+});
 
 

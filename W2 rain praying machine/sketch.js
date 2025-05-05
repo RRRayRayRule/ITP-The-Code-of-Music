@@ -44,6 +44,11 @@ function preload() {
   bodyPose = ml5.bodyPose("BlazePose", { flipped: true });
 }
 
+
+
+
+/// testst 
+
 function setup() {
   createCanvas(600, 900, WEBGL);
   video = createCapture(VIDEO, { flipped: true });

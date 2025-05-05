@@ -212,13 +212,11 @@ export class BeatSineWave {
     constructor(world, x, y, z) {
         this.world = world;
         this.origin = new THREE.Vector3(x, y, z);
-        this.z = z;
+        this.z=z;
         this.resolution = 100;
         this.length = 0.3; // 0.1 meters long
         this.spacing = this.length / this.resolution;
-
         this.points = [];
-
         for (let i = 0; i < this.resolution; i++) {
             const px = i * this.spacing;
             const py = Math.sin(px*20)*0.05;

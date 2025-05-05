@@ -3,7 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 import { BeatSineWave, FirstBatchedRain, SecondBatchedRain, ThirdBatchedRain } from './class.js';
 import { XRHandModelFactory } from 'three/examples/jsm/webxr/XRHandModelFactory.js';
-import {MeshLine, MeshLineMaterial} from 'three.meshline';
+import { MeshLine, MeshLineMaterial } from 'three.meshline';
 import * as Tone from 'tone';
 
 //basic setting:
@@ -15,7 +15,6 @@ const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 const controls = new OrbitControls(camera, renderer.domElement);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.xr.enabled = true; //enable WebXR support
-
 //ask for hand tracking from xr manager
 navigator.xr.requestSession = (function (original) {
   return function (mode, options) {
@@ -27,7 +26,6 @@ navigator.xr.requestSession = (function (original) {
     return original.call(this, mode, options);
   };
 })(navigator.xr.requestSession);
-
 document.body.appendChild(renderer.domElement);
 document.body.appendChild(VRButton.createButton(renderer));
 //Setting the frame:
@@ -39,7 +37,6 @@ scene.background = new THREE.Color("#ededed");
 //scene.background = new THREE.Color("black");
 wireframe.position.copy(camera.position);
 world.add(wireframe);
-
 //setting trigger walls:
 const wallMaterial = new THREE.MeshBasicMaterial({
   color: 'black',
@@ -60,11 +57,6 @@ const rightWall = new THREE.Mesh(wallGeometry, wallMaterial.clone());
 rightWall.rotation.y = Math.PI / 2;
 rightWall.position.set(1, 0, 0);
 world.add(rightWall);
-let triggerWalls = [frontWall, leftWall, rightWall];
-let wallTouched = [false, false, false]; // [front, left, right]
-let lastWallTouched = [false, false, false];
-let played = [false, false, false];
-let lastPlayed = [false, false, false];
 let loaded = false;
 let lastHandDistance = 0;
 
@@ -87,18 +79,29 @@ const jointMaterial = new THREE.MeshStandardMaterial({ color: 0x00ffcc });
 const singleDrop = new Tone.Player({
   url: '/assets/single drop.wav',
   loop: true
-}
-).toDestination();
+}).toDestination();
 const coolWeather = new Tone.Player({
   url: '/assets/cool weather.flac',
   loop: true
-}
-).toDestination();
+}).toDestination();
 const storm = new Tone.Player({
   url: 'assets/storm.flac',
   loop: true
-}
-).toDestination();
+}).toDestination();
+const hh = new Tone.Player({
+  url: '/assets/hh.mp3',
+}).toDestination();
+const hho = new Tone.Player({
+  url: '/assets/hho.mp3',
+}).toDestination();
+const kick = new Tone.Player({
+  url: '/assets/kick.mp3',
+}).toDestination();
+const snare = new Tone.Player({
+  url: '/assets/snare.mp3',
+}).toDestination();
+
+
 let globalBPM = 120;
 singleDrop.playbackRate = globalBPM / 123;
 coolWeather.playbackRate = globalBPM / 129;
@@ -170,7 +173,24 @@ for (let i = 0; i < 100; i++) {
   rightdrops.push(new ThirdBatchedRain(world));
 }
 
-const sinedrops1 = new BeatSineWave(world,0,0,-0.5);
+//making sinewave and trigger box
+const sinedrops1 = new BeatSineWave(world, -0.6, 0.3, 0);
+const sineBoxMat = new THREE.MeshBasicMaterial({
+  color:'black',
+  transparent: true,
+  opacity:0.3
+})
+const sineBoxGeo1 = new THREE.BoxGeometry(0.3,0.1,0.03);
+const sinebox1 = new THREE.Mesh(sineBoxGeo1,sineBoxMat.clone())
+sinebox1.position.set(-0.45,0.3,0);
+world.add(sinebox1);
+let triggerWalls = [frontWall, leftWall, rightWall, sinebox1];
+let wallTouched = [false, false, false, false]; // [front, left, right]
+let lastWallTouched = [false, false, false, false];
+let played = [false, false, false, false];
+let lastPlayed = [false, false, false, false];
+
+
 
 
 //animation:
@@ -260,6 +280,8 @@ function animate(timestamp, frame) {
   for (let frontdrop of frontdrops) {
     if (played[0]) {
       frontdrop.drop();
+      // const time = performance.now() * 0.001;
+      // sinedrops1.oscillate(time);
     }
   }
   for (let leftdrop of leftdrops) {
@@ -271,6 +293,11 @@ function animate(timestamp, frame) {
     if (played[2]) {
       rightdrop.drop();
     }
+  }
+
+  if(played[3]){
+    const time = performance.now() * 0.001;
+    sinedrops1.oscillate(time);
   }
 
 
@@ -291,10 +318,15 @@ function animate(timestamp, frame) {
     } else if (!played[2] && lastPlayed[2]) {
       storm.stop();
     }
+    if(played[3]&& !lastPlayed[3]){
+      hho.start("@1m");
+    }else if(!played[3] && lastPlayed[3]){
+      hho.stop();
+    }
 
   }
 
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 4; i++) {
     lastWallTouched[i] = wallTouched[i];
     lastPlayed[i] = played[i];
   }

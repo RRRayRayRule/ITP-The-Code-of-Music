@@ -69,7 +69,7 @@ let loaded = false;
 let lastHandDistance = 0;
 
 //setting the perspective:
-camera.position.set(0, 1.6, 0);
+camera.position.set(0, 1.6, -8);
 camera.lookAt(0, 0, 0);
 world.position.set(0, 1, 0);
 
@@ -173,8 +173,11 @@ for (let i = 0; i < 100; i++) {
 
 //animation:
 function animate(timestamp, frame) {
+  renderer.render(scene, camera);
+  controls.update();
   let leftTipPos = null;
   let rightTipPos = null;
+  
 
   if (frame) {
 
@@ -267,8 +270,7 @@ function animate(timestamp, frame) {
       }
     }
 
-    renderer.render(scene, camera);
-    controls.update();
+
 
     if (loaded) {
       if (played[0] && !lastPlayed[0]) {

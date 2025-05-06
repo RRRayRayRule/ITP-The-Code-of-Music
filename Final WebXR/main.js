@@ -45,7 +45,7 @@ const wallMaterial = new THREE.MeshBasicMaterial({
   side: THREE.DoubleSide,
   depthWrite: false
 })
-const wallGeometry = new THREE.BoxGeometry(2, 3, 1);
+const wallGeometry = new THREE.BoxGeometry(2, 3, 0.6);
 const frontWall = new THREE.Mesh(wallGeometry, wallMaterial.clone());
 frontWall.position.set(0, 0, -1);
 world.add(frontWall);
@@ -165,6 +165,7 @@ function toggleTeleport() {
 // const imageMesh = new THREE.Mesh(imageGeometry, imagemMaterial);
 // world.add(imageMesh);
 // imageMesh.position.set(0,0,-1.5);
+
 //declare the 3 different types of rain
 const frontdrops = [];
 for (let i = 0; i < 10; i++) {
@@ -178,8 +179,10 @@ const rightdrops = [];
 for (let i = 0; i < 50; i++) {
   rightdrops.push(new ThirdBatchedRain(world));
 }
-//making sinewave and trigger box
-const sinedrops1 = new BeatSineWave(world, -0.6, 0.3, 0);
+// //making sinewave and trigger box
+const sinedrops1 = new BeatSineWave(world, -0.6, 0.3, 0.2);
+const sinedrops2 = new BeatSineWave(world, 0, 0.3, -0.3);
+const sinedrops3 = new BeatSineWave(world, 0.6, 0.3, 0.2);
 const sineBoxMat = new THREE.MeshBasicMaterial({
   color: 'black',
   transparent: true,
@@ -187,15 +190,21 @@ const sineBoxMat = new THREE.MeshBasicMaterial({
   depthWrite: false
 })
 const sineBoxGeo1 = new THREE.BoxGeometry(0.3, 0.1, 0.03);
+const sineBoxGeo2 = new THREE.BoxGeometry(0.3, 0.1, 0.03);
+const sineBoxGeo3 = new THREE.BoxGeometry(0.3, 0.1, 0.03);
 const sinebox1 = new THREE.Mesh(sineBoxGeo1, sineBoxMat.clone())
-sinebox1.position.set(-0.45, 0.3, 0);
-world.add(sinebox1);
-let triggerWalls = [frontWall, leftWall, rightWall, sinebox1];
-let wallTouched = [false, false, false, false]; // [front, left, right]
-let lastWallTouched = [false, false, false, false];
-let played = [false, false, false, false];
-let lastPlayed = [false, false, false, false];
+const sinebox2 = new THREE.Mesh(sineBoxGeo2, sineBoxMat.clone())
+const sinebox3 = new THREE.Mesh(sineBoxGeo3, sineBoxMat.clone())
+sinebox1.position.set(-0.45, 0.3, 0.4);
+sinebox2.position.set(0.15, 0.3, -0.6);
+sinebox3.position.set(0.75, 0.3, 0.4);
+world.add(sinebox1,sinebox2,sinebox3);
 
+let triggerWalls = [frontWall, leftWall, rightWall, sinebox1,sinebox2,sinebox3];
+let wallTouched = [false, false, false, false,false,false]; // [front, left, right]
+let lastWallTouched = [false, false, false, false,false,false];
+let played = [false, false, false, false,false,false];
+let lastPlayed = [false, false, false, false,false,false];
 let spreadPaints=[];
 
 
@@ -204,8 +213,6 @@ let spreadPaints=[];
 function animate(timestamp, frame) {
   renderer.render(scene, camera);
   controls.update();
-  let leftTipPos = null;
-  let rightTipPos = null;
   let leftPalmPos = null;
   let rightPalmPos = null;
 
@@ -298,7 +305,14 @@ function animate(timestamp, frame) {
     const time = performance.now() * 0.001;
     sinedrops1.oscillate(time); 
   }
-
+  if (!played[4]) {
+    const time = performance.now() * 0.001;
+    sinedrops2.oscillate(time); 
+  }
+  if (!played[5]) {
+    const time = performance.now() * 0.001;
+    sinedrops3.oscillate(time); 
+  }
 
   if (loaded) {
     if (played[0] && !lastPlayed[0]) {
@@ -316,10 +330,38 @@ function animate(timestamp, frame) {
     } else if (!played[2] && lastPlayed[2]) {
       storm.stop();
     }
-    if (played[3] && !lastPlayed[3]) {
-      hho.start();
-      spreadPaints.push(new SpreadPaint(world));
+    // if (played[3] && !lastPlayed[3]) {
+    //   hho.start();
+    //   spreadPaints.push(new SpreadPaint(world));
+    // }
+
+    // if (played[4] && !lastPlayed[4]) {
+    //   kick.start();
+    //   spreadPaints.push(new SpreadPaint(world));
+    // }
+    // if (played[5] && !lastPlayed[5]) {
+    //   snare.start();
+    //   spreadPaints.push(new SpreadPaint(world));
+    // }
+    const canTrigger = [true, true, true, true, true, true]; // assumes 6 trigger channels
+
+    function triggerSound(index, player) {
+      if (played[index] && !lastPlayed[index] && canTrigger[index]) {
+        player.stop(); // optional: prevents overlapping playback
+        player.start();
+        spreadPaints.push(new SpreadPaint(world));
+    
+        canTrigger[index] = false;
+        setTimeout(() => {
+          canTrigger[index] = true;
+        }, 300); // cooldown in ms
+      }
     }
+    
+    // Call triggers for specific channels
+    triggerSound(3, hho);
+    triggerSound(4, kick);
+    triggerSound(5, snare);
   }
 
   for (let i = 0; i < 4; i++) {
@@ -341,7 +383,6 @@ function animate(timestamp, frame) {
       }
       const time = performance.now() * 0.001;
       sinedrops1.oscillate(time);
-
       singleDrop.start("@1m");
       coolWeather.start("@1m");
       storm.start("@1m");
@@ -354,5 +395,4 @@ renderer.setAnimationLoop(animate);
 Tone.loaded().then(function () {
   loaded = true;
 });
-
 

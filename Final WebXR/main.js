@@ -198,14 +198,14 @@ const sinebox3 = new THREE.Mesh(sineBoxGeo3, sineBoxMat.clone())
 sinebox1.position.set(-0.45, 0.3, 0.4);
 sinebox2.position.set(0.15, 0.3, -0.6);
 sinebox3.position.set(0.75, 0.3, 0.4);
-world.add(sinebox1,sinebox2,sinebox3);
+world.add(sinebox1, sinebox2, sinebox3);
 
-let triggerWalls = [frontWall, leftWall, rightWall, sinebox1,sinebox2,sinebox3];
-let wallTouched = [false, false, false, false,false,false]; // [front, left, right]
-let lastWallTouched = [false, false, false, false,false,false];
-let played = [false, false, false, false,false,false];
-let lastPlayed = [false, false, false, false,false,false];
-let spreadPaints=[];
+let triggerWalls = [frontWall, leftWall, rightWall, sinebox1, sinebox2, sinebox3];
+let wallTouched = [false, false, false, false, false, false]; // [front, left, right]
+let lastWallTouched = [false, false, false, false, false, false];
+let played = [false, false, false, false, false, false];
+let lastPlayed = [false, false, false, false, false, false];
+let spreadPaints = [];
 
 
 
@@ -303,15 +303,15 @@ function animate(timestamp, frame) {
 
   if (!played[3]) {
     const time = performance.now() * 0.001;
-    sinedrops1.oscillate(time); 
+    sinedrops1.oscillate(time);
   }
   if (!played[4]) {
     const time = performance.now() * 0.001;
-    sinedrops2.oscillate(time); 
+    sinedrops2.oscillate(time);
   }
   if (!played[5]) {
     const time = performance.now() * 0.001;
-    sinedrops3.oscillate(time); 
+    sinedrops3.oscillate(time);
   }
 
   if (loaded) {
@@ -330,41 +330,21 @@ function animate(timestamp, frame) {
     } else if (!played[2] && lastPlayed[2]) {
       storm.stop();
     }
-    // if (played[3] && !lastPlayed[3]) {
-    //   hho.start();
-    //   spreadPaints.push(new SpreadPaint(world));
-    // }
-
-    // if (played[4] && !lastPlayed[4]) {
-    //   kick.start();
-    //   spreadPaints.push(new SpreadPaint(world));
-    // }
-    // if (played[5] && !lastPlayed[5]) {
-    //   snare.start();
-    //   spreadPaints.push(new SpreadPaint(world));
-    // }
-    const canTrigger = [true, true, true, true, true, true]; // assumes 6 trigger channels
-
-    function triggerSound(index, player) {
-      if (played[index] && !lastPlayed[index] && canTrigger[index]) {
-        player.stop(); // optional: prevents overlapping playback
-        player.start();
-        spreadPaints.push(new SpreadPaint(world));
-    
-        canTrigger[index] = false;
-        setTimeout(() => {
-          canTrigger[index] = true;
-        }, 300); // cooldown in ms
-      }
+    if (played[3] && !lastPlayed[3]) {
+      hho.start();
+      spreadPaints.push(new SpreadPaint(world));
     }
-    
-    // Call triggers for specific channels
-    triggerSound(3, hho);
-    triggerSound(4, kick);
-    triggerSound(5, snare);
-  }
 
-  for (let i = 0; i < 4; i++) {
+    if (played[4] && !lastPlayed[4]) {
+      kick.start();
+      spreadPaints.push(new SpreadPaint(world));
+    }
+    if (played[5] && !lastPlayed[5]) {
+      snare.start();
+      spreadPaints.push(new SpreadPaint(world));
+    }
+  }
+  for (let i = 0; i <6; i++) {
     lastWallTouched[i] = wallTouched[i];
     lastPlayed[i] = played[i];
   }

@@ -180,24 +180,24 @@ for (let i = 0; i < 50; i++) {
   rightdrops.push(new ThirdBatchedRain(world));
 }
 // //making sinewave and trigger box
-const sinedrops1 = new BeatSineWave(world, -0.6, 0.3, 0.2);
-const sinedrops2 = new BeatSineWave(world, 0, 0.3, -0.3);
-const sinedrops3 = new BeatSineWave(world, 0.6, 0.3, 0.2);
+const sinedrops1 = new BeatSineWave(world, -0.6, 0, 0.2);
+const sinedrops2 = new BeatSineWave(world, 0, 0, -0.3);
+const sinedrops3 = new BeatSineWave(world, 0.6, 0, 0.2);
 const sineBoxMat = new THREE.MeshBasicMaterial({
   color: 'black',
   transparent: true,
-  opacity: 0,
+  opacity: 0.3,
   depthWrite: false
 })
-const sineBoxGeo1 = new THREE.BoxGeometry(0.3, 0.1, 0.03);
-const sineBoxGeo2 = new THREE.BoxGeometry(0.3, 0.1, 0.03);
-const sineBoxGeo3 = new THREE.BoxGeometry(0.3, 0.1, 0.03);
+const sineBoxGeo1 = new THREE.BoxGeometry(0.3, 0.1, 0.01);
+const sineBoxGeo2 = new THREE.BoxGeometry(0.3, 0.1, 0.01);
+const sineBoxGeo3 = new THREE.BoxGeometry(0.3, 0.1, 0.01);
 const sinebox1 = new THREE.Mesh(sineBoxGeo1, sineBoxMat.clone())
 const sinebox2 = new THREE.Mesh(sineBoxGeo2, sineBoxMat.clone())
 const sinebox3 = new THREE.Mesh(sineBoxGeo3, sineBoxMat.clone())
-sinebox1.position.set(-0.45, 0.3, 0.4);
-sinebox2.position.set(0.15, 0.3, -0.6);
-sinebox3.position.set(0.75, 0.3, 0.4);
+sinebox1.position.set(-0.45, 0, 0.4);
+sinebox2.position.set(0.15, 0, -0.6);
+sinebox3.position.set(0.75, 0, 0.4);
 world.add(sinebox1, sinebox2, sinebox3);
 
 let triggerWalls = [frontWall, leftWall, rightWall, sinebox1, sinebox2, sinebox3];

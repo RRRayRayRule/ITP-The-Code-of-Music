@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {MeshLine, MeshLineMaterial} from 'three.meshline';
+import { MeshLine, MeshLineMaterial } from 'three.meshline';
 
 export class FirstBatchedRain {
     constructor(world, dropCount = 200, segments = 5, length = 0.1) {
@@ -19,7 +19,7 @@ export class FirstBatchedRain {
             const x = THREE.MathUtils.randFloat(-1, 1);
             const y = THREE.MathUtils.randFloat(0, 1.8);
             const z = -1;
-            const speed = THREE.MathUtils.randFloat(-0.005, -0.007);
+            const speed = THREE.MathUtils.randFloat(-0.005, -0.006);
 
             this.drops.push({ x, y, z, speed });
             this._updateDropPositions(i, x, y, z);
@@ -69,9 +69,7 @@ export class SecondBatchedRain {
     constructor(world, count = 100) {
         this.world = world;
         this.count = count;
-
         this.dummy = new THREE.Object3D();
-
         // Shared geometry and material
         const radius = THREE.MathUtils.randFloat(0.1, 0.03);// Use a fixed size for instancing
         const geometry = new THREE.CircleGeometry(radius, 32);
@@ -86,7 +84,9 @@ export class SecondBatchedRain {
         this.mesh = new THREE.InstancedMesh(geometry, material, this.count);
         this.mesh.frustumCulled = false;
         this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-        this.world.add(this.mesh);
+
+        //dthis.mesh.position.set(-1,0,1);
+        //this.mesh.rotation.y=Math.PI/2;
 
         // Store position and speed for each instance
         this.positions = [];
@@ -95,8 +95,9 @@ export class SecondBatchedRain {
         for (let i = 0; i < this.count; i++) {
             const x = -1;
             const y = THREE.MathUtils.randFloat(-1.5, 1.5);
-            const z = THREE.MathUtils.randFloat(1, 2) * 2;
-            const speed = THREE.MathUtils.randFloat(0.01, 0.02);
+            const z = THREE.MathUtils.randFloat(1, 0.8
+            );
+            const speed = THREE.MathUtils.randFloat(0.01, 0.15);
 
             this.positions.push({ x, y, z });
             this.speeds.push(speed);
@@ -104,6 +105,7 @@ export class SecondBatchedRain {
     }
 
     drop() {
+        this.world.add(this.mesh);
         for (let i = 0; i < this.count; i++) {
             let pos = this.positions[i];
 
@@ -156,8 +158,8 @@ export class ThirdBatchedRain {
             const x = 1;
             const y = THREE.MathUtils.randFloat(-1.5, -1);
             const z = THREE.MathUtils.randFloat(-1.2, -0.8);
-            const speedy = THREE.MathUtils.randFloat(0, 0.02);
-            const speedz = THREE.MathUtils.randFloat(0, 0.02);
+            const speedy = THREE.MathUtils.randFloat(0, 0.01);
+            const speedz = THREE.MathUtils.randFloat(0, 0.01);
             const length = THREE.MathUtils.randFloat(0.1, 0.2);
 
             this.origins.push({ x, y, z });
@@ -170,7 +172,7 @@ export class ThirdBatchedRain {
 
         this.geometry.attributes.position.needsUpdate = true;
     }
-    
+
     setLinePoints(i, x, y, z, speedy, speedz, length) {
         const startIndex = i * 2 * 3; // 2 points per line, 3 coords each
 
@@ -181,8 +183,8 @@ export class ThirdBatchedRain {
 
         // End point
         this.positions[startIndex + 3] = x;
-        this.positions[startIndex + 4] = y + (length / (speedz+speedy)) * speedy;
-        this.positions[startIndex + 5] = z + (length/ (speedz+speedy))*speedz;
+        this.positions[startIndex + 4] = y + (length / (speedz + speedy)) * speedy;
+        this.positions[startIndex + 5] = z + (length / (speedz + speedy)) * speedz;
     }
 
     drop() {
@@ -212,28 +214,30 @@ export class BeatSineWave {
     constructor(world, x, y, z) {
         this.world = world;
         this.origin = new THREE.Vector3(x, y, z);
-        this.z=z;
+        this.z = z;
         this.resolution = 100;
         this.length = 0.3; // 0.1 meters long
         this.spacing = this.length / this.resolution;
         this.points = [];
         for (let i = 0; i < this.resolution; i++) {
             const px = i * this.spacing;
-            const py = Math.sin(px*20)*0.05;
+            const py = Math.sin(px * 20) * 0.05;
             const pz = 0;
             this.points.push(new THREE.Vector3(px, py, pz));
         }
 
         this.meshLine = new MeshLine();
-        const flatPoints =[];
-        for(let i=0; i<this.points.length; i++){
-            flatPoints.push(this.points[i].x,this.points[i].y,this.points[i].z);
+        const flatPoints = [];
+        for (let i = 0; i < this.points.length; i++) {
+            flatPoints.push(this.points[i].x, this.points[i].y, this.points[i].z);
         }
         this.meshLine.setPoints(new Float32Array(flatPoints));
 
         this.material = new MeshLineMaterial({
-            color: new THREE.Color('#eb3434'),
+            color: '#2ac9bc',
             lineWidth: 0.03,
+            transparent: true,
+            opacity: 0.8
         });
 
         this.line = new THREE.Mesh(this.meshLine, this.material);
@@ -242,13 +246,54 @@ export class BeatSineWave {
     }
 
     oscillate(time) {
-        const flatPoints =[];
+        const flatPoints = [];
         for (let i = 0; i < this.resolution; i++) {
             const x = i * this.spacing;
             const y = Math.sin(x * 20 + time * 5) * 0.05; // adjust frequency and amplitude
             this.points[i].set(x, y, this.z);
-            flatPoints.push(x,y,this.z);
+            flatPoints.push(x, y, this.z);
         }
         this.meshLine.setPoints(new Float32Array(flatPoints));
     }
+
+}
+
+export class SpreadPaint {
+    constructor(world, spreadCount = 10) {
+        this.spreadCount = spreadCount;
+        this.world = world
+        this.dummy=new THREE.Object3D();
+        const radius = THREE.MathUtils.randFloat(0.01, 0.03);
+        const geometry = new THREE.CircleGeometry(radius, 32);
+        const material = new THREE.MeshBasicMaterial({
+            color: '#2ac9b1',
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.3
+        })
+        this.mesh = new THREE.InstancedMesh(geometry, material, this.spreadCount);
+        this.world.add(this.mesh);
+        //this.mesh.frustumCulled = false;
+        this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        this.positions = [];
+        for (let i = 0; i < this.spreadCount; i++) {
+            const x = centeredBiasedRandom(5,5);
+            const y= centeredBiasedRandom(5,5);
+            const z= THREE.MathUtils.randFloat(-1,5);
+            this.positions.push({x,y,z});
+            this.dummy.position.set(x,y,z);
+            this.dummy.updateMatrix();
+            this.mesh.setMatrixAt(i,this.dummy.matrix);
+        }
+        this.mesh.instanceMatrix.needsUpdate = true;
+
+    }
+}
+
+function centeredBiasedRandom(range,bias) {
+    // Uniform value from -1 to 1
+    const u = Math.random() * 2 - 1;
+    // Apply bias toward 0
+    const biased = Math.sign(u) * Math.abs(u) ** bias;
+    return biased * range;
 }
